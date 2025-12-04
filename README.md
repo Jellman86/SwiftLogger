@@ -87,6 +87,7 @@ Configures global logging settings used by other functions.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
+| `AppName` | String | No | Application name identifier, included in JSON logs and syslog messages. Used to identify the source application in logs. |
 | `SysLogServer` | String | No | Hostname or IP address of the syslog server. Used by `Write-Log` when `SendSyslog` is enabled. |
 | `SysLogPort` | Integer | No | Port number of the syslog server (typically 514 for UDP/TCP, 6514 for TLS). Used by `Write-Log` when `SendSyslog` is enabled. |
 | `LogFilePath` | String | No | Directory path where log files will be created. Both `.log` and `.json` files are written here. |
@@ -99,7 +100,8 @@ Configures global logging settings used by other functions.
 **Example:**
 
 ```powershell
-Set-LogConfiguration -SysLogServer "10.0.0.50" `
+Set-LogConfiguration -AppName "MyApplication" `
+                     -SysLogServer "10.0.0.50" `
                      -SysLogPort 514 `
                      -LogFilePath "C:\Logs\MyApp" `
                      -LogName "Application" `
@@ -141,9 +143,23 @@ Writes log entries to file and optionally to syslog server. Handles colored cons
 
 **JSON Log Entry Example:**
 
+**JSON Log Entry Example:**
+
 ```json
-{"timestamp":"2025-12-04 16:35:22","level":"error","message":"Database connection failed","script":"Deploy-Script","version":"2.1.0","computerName":"SERVER01"}
+{"timestamp":"2025-12-04 16:35:22","level":"error","message":"Database connection failed","appName":"MyApplication","script":"Deploy-Script","version":"2.1.0","computerName":"SERVER01"}
 ```
+
+**Message ID Mapping:**
+
+When using `Write-Log` with the syslog feature enabled, MsgID is automatically mapped based on the log type:
+
+| Log Type | MsgID | Purpose |
+|----------|-------|---------|
+| `error` | ERR | Error condition messages |
+| `warn` | WRN | Warning condition messages |
+| `success` | SUC | Successful operation messages |
+| `general` | INF | General informational messages |
+| `debug` | DBG | Debug-level detail messages |
 
 **Example:**
 
@@ -167,9 +183,9 @@ Sends syslog messages directly to a syslog server with full RFC5424/RFC3164 supp
 | `Message` | String | Yes | - | The syslog message body. |
 | `Facility` | Integer | No | 1 (User-level) | RFC5424 facility code (0-23). Defines message source category. |
 | `Severity` | Integer | No | 6 (Informational) | RFC5424 severity level (0-7). Defines message priority. |
-| `AppName` | String | No | "PSLOG" | Application name in syslog header. Identifies the source application. |
+| `AppName` | String | No | "swiftLogger" | Application name in syslog header. Identifies the source application. Set via `Set-LogConfiguration`. |
 | `ProcID` | String | No | $PID (current process ID) | Process identifier in syslog header. |
-| `MsgID` | String | No | "ID1" | Message identifier in syslog header for tracking/correlation. |
+| `MsgID` | String | No | "PSLogging" | Message identifier in syslog header for tracking/correlation. Auto-mapped by `Write-Log` based on log type. |
 | `StructuredData` | String | No | "-" | RFC5424 structured data element (e.g., `[exampleSDID@32473 key1="value1"]`). Use "-" for none. |
 | `RFC` | String | No | "RFC5424" | Syslog protocol version. Valid values: `RFC5424` (modern), `RFC3164` (legacy). |
 | `Transport` | String | No | "UDP" | Primary transport protocol. Valid values: `UDP`, `TCP`, `TLS` |
@@ -352,6 +368,7 @@ Write-Log -msg "Incoming request from 192.168.1.50 for /api/users" -type "genera
 
 After calling `Set-LogConfiguration`, the following global variables are available:
 
+- `$Global:AppName` - Application name identifier
 - `$Global:SysLogServer` - Syslog server hostname/IP
 - `$Global:SysLogPort` - Syslog server port
 - `$Global:LogFilePath` - Log file directory
