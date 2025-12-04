@@ -165,9 +165,11 @@ function Write-Log {
 
     if ($SendSysLog) {
         $severityMap = @{ error=3; warn=4; success=5; general=6; debug=7 }
+        $msgIdMap = @{ error='ERR'; warn='WRN'; success='SUC'; general='INF'; debug='DBG' }
         $severity = $severityMap[$type.ToLower()]; if (-not $severity) { $severity = 6 }
+        $msgId = $msgIdMap[$type.ToLower()]; if (-not $msgId) { $msgId = 'UNKNOWN' }
         $syslogMessage = if ($OutputJson) { $jsonEntry } else { "[$Global:AppName] [$Global:ScriptName / $Global:ScriptVersion] - [$type] - $msg" }
-        Invoke-Syslog -EndPoint $Global:SysLogServer -Port $Global:SysLogPort -Message $syslogMessage -Severity $severity -AppName $Global:AppName -IsJson:$OutputJson -Verbose
+        Invoke-Syslog -EndPoint $Global:SysLogServer -Port $Global:SysLogPort -Message $syslogMessage -Severity $severity -MsgID $msgId -AppName $Global:AppName -IsJson:$OutputJson -Verbose
     }
 }
 
