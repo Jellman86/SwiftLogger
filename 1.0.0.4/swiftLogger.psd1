@@ -7,4 +7,12 @@
     Description = 'PowerShell module for logging and syslog integration with RFC5424, JSON support, IPv6, UDP/TCP/TLS fallback, and configuration helper.'
     FunctionsToExport = @('Invoke-Syslog','Write-Log','New-StructuredSyslogData','Set-LogConfiguration')
     PowerShellVersion = '5.1'
+    PrivateData = @{
+            PSData = @{
+                Tags                       = @('Log','Syslog','RFC5424','JSON','PowerShell')
+                LicenseUri                 = 'https://github.com/Jellman86/SwiftLogger/blob/main/LICENSE'
+                ProjectUri                 = 'https://github.com/Jellman86/SwiftLogger'
+                ReleaseNotes               = 'Updated to fix boolean handling in structured data.'
+            }
+    }
 }
