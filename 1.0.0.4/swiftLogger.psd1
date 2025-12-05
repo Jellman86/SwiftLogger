@@ -1,7 +1,7 @@
 
 @{
     RootModule = 'swiftlogger.psm1'
-    ModuleVersion = '1.0.0.1'
+    ModuleVersion = '1.0.0.4'
     GUID = 'e2f9f8b2-4d2e-4f9a-bb7d-abcdef445566'
     Author = 'Scott Powdrill'
     Description = 'PowerShell module for logging and syslog integration with RFC5424, JSON support, IPv6, UDP/TCP/TLS fallback, and configuration helper.'
