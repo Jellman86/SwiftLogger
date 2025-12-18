@@ -6,7 +6,7 @@ A PowerShell module for comprehensive logging and syslog integration with RFC542
 
 - **RFC5424 & RFC3164 Compliance**: Full support for both RFC5424 (modern) and RFC3164 (legacy) syslog protocols
 - **JSON Structured Logging**: Generate structured JSON log entries with comprehensive context (timestamp, level, message, script name, version, computer name)
-- **Dual Output Support**: Write logs to both file-based logs and JSON log files simultaneously
+- **Multi-Format Output**: Support for both plain text `.log` files and structured `.json` log files (configurable per-call or globally)
 - **IPv6 Support**: Works with both IPv4 and IPv6 addresses with automatic address family detection
 - **Intelligent Transport Fallback**: Attempt TCP or TLS first, with automatic fallback to UDP if primary transport fails
 - **Colored Console Output**: Color-coded log levels in PowerShell console (Error, Warning, Success, General, Debug)
@@ -90,12 +90,13 @@ Configures global logging settings used by other functions.
 | `AppName` | String | No | Application name identifier, included in JSON logs and syslog messages. Used to identify the source application in logs. |
 | `SysLogServer` | String | No | Hostname or IP address of the syslog server. Used by `Write-Log` when `SendSyslog` is enabled. |
 | `SysLogPort` | Integer | No | Port number of the syslog server (typically 514 for UDP/TCP, 6514 for TLS). Used by `Write-Log` when `SendSyslog` is enabled. |
-| `LogFilePath` | String | No | Directory path where log files will be created. Both `.log` and `.json` files are written here. |
-| `LogName` | String | No | Base name for log files (without extension). Creates `{LogName}.log` and `{LogName}.json` files. |
+| `SysLogRFC` | String | No | Syslog protocol capability. Valid values: `RFC5424` (default), `RFC3164`. |
+| `LogFilePath` | String | No | Directory path where log files will be created. Files are written here. |
+| `LogName` | String | No | Base name for log files (without extension). Creates `{LogName}.log` or `{LogName}.json` files depending on configuration. |
 | `ScriptName` | String | No | Name of the calling script, included in JSON logs and syslog messages for identification. |
 | `ScriptVersion` | String | No | Version of the calling script, included in JSON logs and syslog messages. |
 | `SendSyslog` | Boolean | No | Whether `Write-Log` should automatically send messages to the syslog server. Default: $false |
-| `JsonLogging` | Boolean | No | Whether `Write-Log` should output JSON format logs. If $true, both JSON and plain text logs are written. Default: $false |
+| `JsonLogging` | Boolean | No | Whether `Write-Log` should output JSON format logs. If $true, writes to JSON file. If $false, writes to text log file. Default: $false |
 
 **Example:**
 
@@ -103,6 +104,7 @@ Configures global logging settings used by other functions.
 Set-LogConfiguration -AppName "MyApplication" `
                      -SysLogServer "10.0.0.50" `
                      -SysLogPort 514 `
+                     -SysLogRFC "RFC5424" `
                      -LogFilePath "C:\Logs\MyApp" `
                      -LogName "Application" `
                      -ScriptName "Deploy-Script" `
@@ -124,7 +126,7 @@ Writes log entries to file and optionally to syslog server. Handles colored cons
 | `msg` | String | Yes | - | The log message text to write. |
 | `type` | String | Yes | - | Log level/type. Valid values: `error`, `warn`, `success`, `general`, `debug` |
 | `SendSysLog` | Boolean | No | $Global:SendSyslog | Override global setting to send this message to syslog. |
-| `OutputJson` | Boolean | No | $Global:JsonLogging | Override global setting to output this message in JSON format. |
+| `OutputJson` | Boolean | No | $Global:JsonLogging | Override global setting to output this message in JSON format to file. |
 
 **Log Type Color Mapping:**
 
@@ -138,10 +140,8 @@ Writes log entries to file and optionally to syslog server. Handles colored cons
 
 **Output Files:**
 
-- Plain Text: `{LogFilePath}\{LogName}.log` - Contains timestamp, log type, and message
-- JSON Format: `{LogFilePath}\{LogName}.json` - Contains structured JSON with metadata
-
-**JSON Log Entry Example:**
+- Plain Text: `{LogFilePath}\{LogName}.log` - Used when `OutputJson` is false.
+- JSON Format: `{LogFilePath}\{LogName}.json` - Used when `OutputJson` is true. Contains structured JSON with metadata.
 
 **JSON Log Entry Example:**
 
@@ -189,7 +189,7 @@ Sends syslog messages directly to a syslog server with full RFC5424/RFC3164 supp
 | `StructuredData` | String | No | "-" | RFC5424 structured data element (e.g., `[exampleSDID@32473 key1="value1"]`). Use "-" for none. |
 | `RFC` | String | No | "RFC5424" | Syslog protocol version. Valid values: `RFC5424` (modern), `RFC3164` (legacy). |
 | `Transport` | String | No | "UDP" | Primary transport protocol. Valid values: `UDP`, `TCP`, `TLS` |
-| `IsJson` | Boolean | No | $false | If $true, marks message as JSON in structured data for syslog server handling. |
+| `IsJson` | Boolean | No | $false | If $true, forces specific structured data tag `[json@32473 tag="json"]` if not otherwise specified. |
 
 **Facility Codes (0-23):**
 
@@ -359,7 +359,7 @@ Set-LogConfiguration -LogFilePath "C:\Logs\API" `
                      -JsonLogging $true
 
 Write-Log -msg "Incoming request from 192.168.1.50 for /api/users" -type "general"
-# Creates JSON: {"timestamp":"2025-12-04 16:35:22","level":"general","message":"Incoming request...","script":"API-Service","version":"1.0","computerName":"SERVER01"}
+# Creates JSON in .json file: {"timestamp":"2025-12-04 16:35:22",...}
 ```
 
 ---
@@ -371,6 +371,7 @@ After calling `Set-LogConfiguration`, the following global variables are availab
 - `$Global:AppName` - Application name identifier
 - `$Global:SysLogServer` - Syslog server hostname/IP
 - `$Global:SysLogPort` - Syslog server port
+- `$Global:SysLogRFC` - Syslog RFC version
 - `$Global:LogFilePath` - Log file directory
 - `$Global:LogName` - Log file name
 - `$Global:ScriptName` - Calling script name
