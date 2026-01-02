@@ -1,18 +1,21 @@
 # swiftLogger
 
-A PowerShell module for comprehensive logging and syslog integration with RFC5424/RFC3164 support, JSON formatting, IPv6, and intelligent UDP/TCP/TLS fallback capabilities. Designed for enterprise logging scenarios requiring flexible, multi-transport log delivery.
+A PowerShell module for comprehensive logging with optional syslog integration. Supports RFC5424/RFC3164, JSON formatting, IPv6, and intelligent UDP/TCP/TLS fallback. Works standalone for local logging or with enterprise syslog servers.
 
 ## Features
 
-- **RFC5424 & RFC3164 Compliance**: Full support for both RFC5424 (modern) and RFC3164 (legacy) syslog protocols
-- **JSON Structured Logging**: Generate structured JSON log entries with comprehensive context (timestamp, level, message, script name, version, computer name)
-- **Multi-Format Output**: Support for both plain text `.log` files and structured `.json` log files (configurable per-call or globally)
-- **IPv6 Support**: Works with both IPv4 and IPv6 addresses with automatic address family detection
-- **Intelligent Transport Fallback**: Attempt TCP or TLS first, with automatic fallback to UDP if primary transport fails
-- **Colored Console Output**: Color-coded log levels in PowerShell console (Error, Warning, Success, General, Debug)
-- **Flexible Facility/Severity Mapping**: Full RFC5424 facility (0-23) and severity (0-7) support with automatic mapping
+- **Local-Only Mode**: Use for file/console logging without any syslog configuration
+- **RFC5424 & RFC3164 Compliance**: Full support for both modern and legacy syslog protocols
+- **JSON Structured Logging**: Generate structured JSON log entries with comprehensive context
+- **Multi-Format Output**: Plain text `.log` or structured `.json` files (configurable per-call or globally)
+- **IPv6 Support**: Works with both IPv4 and IPv6 addresses with automatic detection
+- **Intelligent Transport Fallback**: TCP/TLS with automatic fallback to UDP on failure
+- **Colored Console Output**: Color-coded log levels (Error, Warning, Success, General, Debug)
+- **Pipeline Support**: `-PassThru` switch returns log entry objects for downstream processing
+- **Quiet Mode**: Suppress console output globally or per-call
+- **Connection Timeouts**: Configurable timeouts prevent hangs on unreachable syslog servers
+- **Configuration Management**: Query, validate, and reset configuration with helper functions
 - **Structured Data Support**: Create RFC5424 structured data elements with custom SDIDs
-- **Global Configuration**: Centralized logging configuration accessible throughout your scripts
 
 ## Installation
 
@@ -24,19 +27,29 @@ Install-Module -Name swiftLogger
 
 ## Quick Start
 
-### 1. Configure Logging
+### 1. Configure Logging (Local Only)
 
-Before using the module, configure your logging settings:
+For simple local logging without syslog:
 
 ```powershell
-Set-LogConfiguration -SysLogServer "syslog.example.com" `
-                     -SysLogPort 514 `
-                     -LogFilePath "C:\Logs" `
+Set-LogConfiguration -LogFilePath "C:\Logs" `
+                     -LogName "MyApplication" `
+                     -ScriptName "MyScript" `
+                     -ScriptVersion "1.0"
+```
+
+### 1b. Configure with Syslog (Optional)
+
+To also send logs to a syslog server:
+
+```powershell
+Set-LogConfiguration -LogFilePath "C:\Logs" `
                      -LogName "MyApplication" `
                      -ScriptName "MyScript" `
                      -ScriptVersion "1.0" `
-                     -SendSyslog $true `
-                     -JsonLogging $true
+                     -SysLogServer "syslog.example.com" `
+                     -SysLogPort 514 `
+                     -SendSyslog $true
 ```
 
 ### 2. Write Logs
@@ -87,16 +100,18 @@ Configures global logging settings used by other functions.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `AppName` | String | No | Application name identifier, included in JSON logs and syslog messages. Used to identify the source application in logs. |
-| `SysLogServer` | String | No | Hostname or IP address of the syslog server. Used by `Write-Log` when `SendSyslog` is enabled. |
-| `SysLogPort` | Integer | No | Port number of the syslog server (typically 514 for UDP/TCP, 6514 for TLS). Used by `Write-Log` when `SendSyslog` is enabled. |
-| `SysLogRFC` | String | No | Syslog protocol capability. Valid values: `RFC5424` (default), `RFC3164`. |
-| `LogFilePath` | String | No | Directory path where log files will be created. Files are written here. |
-| `LogName` | String | No | Base name for log files (without extension). Creates `{LogName}.log` or `{LogName}.json` files depending on configuration. |
-| `ScriptName` | String | No | Name of the calling script, included in JSON logs and syslog messages for identification. |
-| `ScriptVersion` | String | No | Version of the calling script, included in JSON logs and syslog messages. |
-| `SendSyslog` | Boolean | No | Whether `Write-Log` should automatically send messages to the syslog server. Default: $false |
-| `JsonLogging` | Boolean | No | Whether `Write-Log` should output JSON format logs. If $true, writes to JSON file. If $false, writes to text log file. Default: $false |
+| `AppName` | String | No | Application name identifier, included in JSON logs and syslog messages. |
+| `LogFilePath` | String | No | Directory path where log files will be created. |
+| `LogName` | String | No | Base name for log files (without extension). |
+| `ScriptName` | String | No | Name of the calling script, included in logs. |
+| `ScriptVersion` | String | No | Version of the calling script. |
+| `JsonLogging` | Boolean | No | Output JSON format logs. Default: $false |
+| `QuietMode` | Boolean | No | Suppress console output globally. Default: $false |
+| `SysLogServer` | String | No | Hostname or IP of syslog server (optional). |
+| `SysLogPort` | Integer | No | Syslog server port (514 for UDP/TCP, 6514 for TLS). |
+| `SysLogRFC` | String | No | Syslog protocol: `RFC5424` (default) or `RFC3164`. |
+| `SendSyslog` | Boolean | No | Send messages to syslog server. Default: $false |
+| `ConnectionTimeoutSeconds` | Integer | No | Timeout for TCP/TLS connections. Default: 5 |
 
 **Example:**
 
@@ -126,7 +141,9 @@ Writes log entries to file and optionally to syslog server. Handles colored cons
 | `msg` | String | Yes | - | The log message text to write. |
 | `type` | String | Yes | - | Log level/type. Valid values: `error`, `warn`, `success`, `general`, `debug` |
 | `SendSysLog` | Boolean | No | $Global:SendSyslog | Override global setting to send this message to syslog. |
-| `OutputJson` | Boolean | No | $Global:JsonLogging | Override global setting to output this message in JSON format to file. |
+| `OutputJson` | Boolean | No | $Global:JsonLogging | Override global setting to output this message in JSON format. |
+| `Quiet` | Switch | No | $false | Suppress console output for this message only. |
+| `PassThru` | Switch | No | $false | Return the log entry object for pipeline processing. |
 
 **Log Type Color Mapping:**
 
@@ -290,6 +307,65 @@ $structData = New-StructuredSyslogData -SDID "user@32473" `
                                            ipaddress = "192.168.1.100"
                                        }
 # Output: [user@32473 username="jdoe" action="login" result="success" ipaddress="192.168.1.100"]
+```
+
+---
+
+### Get-LogConfiguration
+
+Retrieves the current SwiftLogger configuration settings.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `AsHashtable` | Switch | No | Return configuration as a hashtable instead of PSCustomObject. |
+
+**Example:**
+
+```powershell
+Get-LogConfiguration
+# Returns current configuration as PSCustomObject
+
+Get-LogConfiguration -AsHashtable
+# Returns configuration as hashtable for export
+```
+
+---
+
+### Test-LogConfiguration
+
+Validates the current SwiftLogger configuration.
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `RequireSyslog` | Switch | No | Also validate syslog-specific settings. |
+| `ThrowOnError` | Switch | No | Throw an exception instead of returning $false if validation fails. |
+
+**Example:**
+
+```powershell
+if (Test-LogConfiguration) {
+    Write-Log -msg "Configuration is valid" -type "success"
+}
+
+# Validate and throw on error
+Test-LogConfiguration -ThrowOnError
+```
+
+---
+
+### Reset-LogConfiguration
+
+Resets the SwiftLogger configuration to default (unconfigured) state.
+
+**Example:**
+
+```powershell
+Reset-LogConfiguration
+# Clears all SwiftLogger settings
 ```
 
 ---
